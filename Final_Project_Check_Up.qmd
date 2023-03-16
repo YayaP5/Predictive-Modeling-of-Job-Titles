@@ -1,0 +1,79 @@
+---
+title: "Final Project Check-Up Data Memo"
+subtitle: "Data Science 1 with R (STAT 301-2)"
+author: "Yaelle Pierre"
+
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+    link-external-newwindow: true
+    
+execute:
+  warning: false
+  message: false
+  
+from: markdown+emoji 
+---
+
+## Data Memo
+
+The goal of this file is to state and describe the dataset of my choosing for the final project in the second quarter of the data science sequence in R while also showing that I have made progress in assessing the data.
+
+## Data Source
+
+### Data citation 
+The data we will be using is the 'kaggle_survey_2020_responses.csv' that was obtained from the dataset finder kaggle.com. The link to the data can be found below. You may have to sign in to view the dataset. 
+
+### Link to dataset
+[kaggle-survey-2020](https://www.kaggle.com/competitions/kaggle-survey-2020/overview)
+
+### Importing/loading data
+
+```{r}
+#| message: false
+
+library(readr)
+library(tidyverse)
+library(janitor)
+data_science_ml <- read_csv("Data/Raw/kaggle-survey-2020/kaggle_survey_2020_responses.csv") %>%
+  clean_names()
+
+```
+
+## Checking data
+
+### Skimming data
+
+```{r}
+library(skimr)
+data_science_ml %>%
+  skim()derfeffuyyu8uyttu7ui
+```
+There seems to be quiet a few missing responses in the data, especially in the data that have multiple parts. I really need to take out lots of the questions that I dont think I will need, and have a low completion rate. I will be removing most of the columns as there are 355 columns in total. Another issue is that when I cleaned the names, the question is in the first line in the data, and therefore constitutes as an observation. I will need to figure out how to either get the question to be the column name after I remove the columns I don't think I will use at all to do the prediction such as the time it took to finish the survey.  Also the questions are not exactly in order. It jumps from 29 to 31 but then later list the ones that it missed for instance. I may decide to change that although it isnt a major issue. 
+
+The question that has my response/outcome variable is question 7, which was made by only allowing them to select the choice they want in that "part" of the question. Therefore to use it as my outcome variable I will have to combine all of the responses for question 7 into one singular column. That seems difficult but I feel like I have coded something like that before in a past lab. Upon looking at other questions like that, it seems like most of the responses are created this way, one column for a specific choice for that question and the differen parts being the different choices. This may be a hassle.
+
+### Looking into Q3 (Where are you from?)
+```{r}
+data_science_ml %>%
+  group_by(q3) %>%
+  count(sort = TRUE)
+```
+Interestingly enough, most of the responses were from India. I also want to remove all responses that aren't from America just to have some more consistency in terms the data but I am not sure if that will be enough observations to make a prediction. Perhaps I will keep the observations from India and America and do some sort of prediction from there. If I do decide to include India, then instead of having 2k observations in the US, then ill have 8k total observations that I am looking at.
+
+### Some Initial Cleaning
+```{r}
+data_science_ml <- data_science_ml %>%
+  select(-contains("q35")) %>%
+  select(-contains("time")) %>%
+  filter(q3 == "United States of America" | q3 == "In which country do you currently reside?")
+```
+Just removing q35 already removes about 20 variables from the data set. Therefore it may not be that difficult to remove the questions I don't want to use. I may want to remove all the questions that have multiple parts. I have so many different predictions I can do to ultimately try to predict what programming language is used most often that I may want to figure out exactly which variables I want to consider.
+
+## Splitting?
+There are an unequal amount of responses that are female and male by a landslide, so I may want to split it stratifying by that, however there are also differences in the different job titles that people have. I may want to strata by that instead, or maybe just look at the data science job title instead. This is because different job titles might more so impact the coding language you use more than your gender would. 
+
+## Assessment of Progress
+I think I am on track in terms of having had identified some cleaning/analysis that could be done within the dataset. Although an R script isn't being handed in, many notes about possible cleaning/analysis have been made to further look into. I am satisfied by my progress, and have made plans for how I am going to go about with the possible things I need to explore. I will meet with the professor to discuss some of the issues/ideas I have to clean the data set. I want to have my finalized questions done before the beginning of march and then the rest of my cleaning done by the end of next week. Therefore I will have 2 weeks to then do my predictions and everything else that I need to do. This allows me for more than enough time to also go to office hours as well.

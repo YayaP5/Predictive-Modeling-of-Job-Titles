@@ -1,0 +1,186 @@
+---
+title: "Predicting STEM Job Titles "
+subtitle: "Data Science 2 with R (STAT 301-2)"
+author: "Yaelle DC Pierre"
+date: "March 14 2023"
+
+format:
+  html:
+    toc: true
+    embed-resources: true
+    echo: false 
+    link-external-newwindow: true
+execute:
+  warning: false
+  message: false
+
+from: markdown+emoji  
+editor: 
+  markdown: 
+    wrap: 72
+---
+# Introduction
+Technology is one of the leading niches in todays' civilization in a multitude of aspects. It has advanced our way in life to a level that would've been unimaginable a century ago. Within the tech field is an array of different job titles, and different tasks managed by each. Sometimes it may be difficult to really understand what the differences between each of them are, or if there really is a difference. Sometimes many role titles are used interchangeably as well, such as data scientist and data analyst. This project was created to see if you could predict the job title of the person based off the answers they chose in a survey. This would provide further insight into the intersectionality and disparities between different jobs within the tech field.
+
+# Data Overview
+The original dataset contains 20037 survey responses done by Kaggle as part of their 2020 annual Data Science Survey Competition . There were 355 variables in this dataset which consist of questions that they asked within the survey. This dataset includes information about the primary coding language they use, their degree, years of experience they have coding, and etc. The survey only consisted of 37 questions initially, but most questions had multiple parts in it, and each column was only one of the choices they could've selected. In a sense, there were multiple "yes/no" style questions, which I ended up dummy coding to 0 or 1 to help with missingness and to clean the data. I went through all the questions and also took out some of the questions that I felt weren't necessary or may hinder my prediction. This was because 355 variables may be too many variables to make a good prediction with, and many of the questions I took out were asking the users what they want to be doing in 2 years.
+
+```{r}
+library(tidyverse)
+library(readr)
+library(skimr)
+library(stringr)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+
+data_science_ml <- read_csv("Data/Raw/kaggle-survey-2020/kaggle_survey_2020_responses.csv") %>%
+  clean_names()
+data_science_ml %>%
+  count(q5)
+```
+The dataset had the column names be the question number, and not the actual question being asked. The actual question was in one of the rows and acted in a sense like another observation. Question 5 (q5) was "Select the title most similar to your current role (or most recent title)". Question 5 was the outcome variable for my prediction problem, and because there were 15 choices to choose from, I thought it would be best to remove some variables that weren't necessary.15 items to predict would not only be difficult but, may lead to a lower level of accuracy and roc_auc. I took off student because there experience wouldn't be collaborative with those that are in a job and using certain languages within their field of study. Furthermore,the question row was removed so that it wouldn't hinder any of my predictions, and be seen as another object to predict. I took out Other, Currently not employed, and NA because it wouldn't make sense to use them if this is my outcome variable and they aren't working at a job. DBA/Database Engineer and Statistician was removed because they had a significantly lower number of responses than the other job titles. This left me with 8 unique job titles to predict in my data.
+
+```{r}
+data_ml <- read_csv("Data/Processed/data_science_ml_cleaned.csv")
+
+data_ml %>%
+  skim(q5)
+
+ggplot(data_ml, aes(x = q5)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 10))
+```
+As shown above, there was no missingness in my outcome variable, as it has a completion rate of 1. There is class imbalance however, as some job titles had more responses than others. Data Scientist had the most respondents, with software engineering being the second highest. The lowest number of responses came from data engineers, which accounted for 1/5th as much responses as the data scientist category. Therefore i would need to make sure to stratify by my outcome variable when creating my initial split and my folds. 
+
+# Methods
+This prediction problem falls under the classification category as I am predicting job titles. The models I will be using will be as followed- K nearest neighbors (KNN), Boosted Tree (BT), Random Forest (RF), Elastic Net (EN), and a Multinomial Regression (MN). 
+
+## Models 
+### K nearest neighbors
+KNN is a supervised machine learning algorithm that classifies a new data point into the target class. You pick the variables for prediction, and calculate the squared difference between the feature of the new data point (y) and the feature of a single training data point(x). Then, you add all those feature squared differences together and take the square root. The final step is to calculate the distance with every training data point and pick the K that are smallest. The disadvantages of this is that they are sensitive to outliers, however because this data set was a survey of selected values mostly, it shouldn't have many outliers. The tuning parameters for this are the neighbors (k).
+
+### Boosted Tree
+A boosted tree is in simplified terms a random forest that learns from each different random forest it makes, in each sequential tree it does. Multiple sequential simple regression trees are combined into a stronger model. Each of the trees are trained on the residuals from the previous sequence of trees and then all the trees are combined using an additive model. The weight of each of those models are estimated using the gradient descent procedure. The tuning parameters for a boosted tree is the mtry(), min_n(), and the learn_rate(.
+
+### Random Forest
+A Random Forest is an example of a decision tree method. It basically averages a bunch of trees to form a decision. It involves stratifying or segmenting the predictor space into a number of simple regions. The predictions typically use the mean or mode response value in the region it belongs. It overcomes the limitations of a single decision tree by considering hundreds of trees and taking the average/mode, however it usually doesn't have the best predictive accuracy. The tuning parameters for this are sampled predictors (mtry), trees, and data points to split (min_n)
+
+### Elastic Net
+An Elastic Net consists of a lasso and a ridge model in one. It overcomes the limitations of the lasso method that uses a penalty function during its regularization. The Elastic net is a hybrid approach that blends both penalizations of lasso and ridge methods. They do this by finding the ridge regression coefficients and then does a lasso regression shrinkage which ends up doubling the shrinkage. It allows us to tune the alpha parameter where alpha = 0 corresponds to ridge regression and alpha = 1 corresponds to lasso regression. Therefore when tuning, you can choose an alpha value between 0 and 1 to optimize the elastic net, shrinking some coefficients and setting some to 0 for sparse selection. An elastic net's tuning parameters are its penalty and the mixture. 
+
+### Multinomial
+A multinomial model is a mechanistic model which is really dependent on model assumptions, and the model assumptions put a lot of weight on the data in each of these categories. A multinomial regression is an extension of logistic regression that adds native support for multi-class classification problems. Logistic regressions are by default binary ,or limited to two-class classification problems, but can be used for multi-class classification problems in some scenarios. Unlike the other models, it doesn't have any tuning parameters and it is fit to resamples instead of being tuned to a grid. Although I set my penalty to 0 for this model, it should be the default.
+
+## Recipes
+The recipes I will be focusing on is the null recipe, kitchen sink recipe, and an alternative recipe created after doing my data exploration. 
+
+### Null Recipe
+The null recipe doesn't actually have a recipe in it. It is used to get a baseline, and therefore although you need to add a recipe to the workflow, it doesn't actually use it. A null model doesn't have any main arguments and can be used to see what the baseline of what the mean would be, which is 0.50.
+
+### Kitchen Recipe
+A Kitchen sink model uses all of the variables in the dataset to predict a response. Because it is a predictive question, the amount of variables used doesn't really matter. For this recipe I made sure to do a step_normalize() of all numeric predictors. Step_normalize() is used to normalize data to have a standard deviation of one and a mean of zero based off the training set. Both of these steps were used to prevent data leakage. Step_impute_median() and step_impute_mode() were next. These substitute missing values of numeric/nominal variables by the training set median/mode of those variables. The function all_nominal_predictors() captures the names of any predictor columns that are a factor or character. This was followed by step_dummy(), which eliminates the original data columns of all_nominal_predictors() and replaces it with one or more columns with different names (dummy variables). One_hot was used to make sure that each new set of dummy variables is equal to the number of categories in the variable. Step_nzv() was used last as it can remove variables that are highly sparse and unbalanced. That is also why it is the last step, after all of the other recipe specifications have been run. Order in these recipes matter, which is also why step_normalize() was first, and step_dummy() was further to the bottom of the recipe.
+
+
+### Alternative Recipe
+The alternative recipe has all of the same steps as the kitchen sink model, however it has a specific set of predictors being used. When doing data exploration into a few of the variables, I wanted to see if I could take some of the variables that didn't have any binary coding and use them to predict the outcome variable. This ended up consisting of q25, q24, q22, q15, q13, and q8. Not all the non-binary variables were chosen. For instance, I left out q3 because I didn't think that the country you were in would impact predicting your job title. From the codebook you can see that the question number with their corresponding question.
+
+```{r}
+library(readr)
+Code_Book <- read_csv("Data/Processed/Code_Book.csv")
+
+codebook <- Code_Book %>%
+  select(q8, q13, q15, q22, q24, q25) %>%
+  as.data.frame(Code_Book)
+  
+codebook
+```
+
+q13, q15, q25 and q22 have to do with machine learning. I know that many different job titles use machine learning, although it is usually a data scientist role that primarily uses it. I thought that may make it important in decipher some of the jobs from the other ones because while a software engineer may use it, a product manager certainly wouldn't. I also included q8 because it is specific to a primary coding language of their choosing, and some respondents may have a bias on what language they should learn depending on their title. Some may not even know what a data scientist does. I thought q24 may be important to include because different job titles usually pay differently, so it could help with differentiating each job title. Although I wasn't sure if those questions would have significant meaning, I wanted to see if it would at least score higher than the baseline model. 
+
+In my kitchen and alternative recipe, I also used prep() and bake() to calculate statistics from the training set.
+
+## Resamples
+Resampling is the selection of randomized cases from the original data sample with replacement in order to estimate the population parameter multiple times. It improves the accuracy of a population parameter and can help prevent overfitting. There are different types of resamples, and I did a v-fold cross-validation in my project. My data was randomly paritioned into 5 sets of roughly equal sizes, which was set to repeat 3 times, leading to a total of 15 folds. The reason for the low number of folds was because my data was so large, with so many variables, that I chose to decrease the amount of folds to allow it to process quicker. 
+
+## Metric
+The metric that I will be using for my prediction problem is roc_auc. ROC is a probability curve and auc represents the degree of separability. The reason I am using this metric is because its the most commonly used metric for classification problems. The area under the curve means how good it is as a predictor, therefore the more area under the curve, the better. Sensitivity and Specificity are inversely proportional to each other on these graphs. Because my model is multi-class, it will plot the number of roc_auc curves for each class using the one vs all methodology. Therefore it would compare that one classification to all the other methodologies in terms of prediction. Although I did look at the accuracy of my final model just for reference, the metric I focus on to get my final model will be roc_auc. 
+
+# Model Building & Selection
+The metric that I will be using to compare models and determine which one will be the final model is the roc_auc curve. The higher roc_auc, the better the model. After the data driven models were tuned, and the multinomial model was fitted to resamples, the following table was created to show the best models within each model and recipe. The best models within each one was graphed and compared to the rest of the best ones in the other models. 
+
+```{r}
+load(file = "graphics/graphs.rda")
+
+print(results)
+```
+As you can see, the elastic net kitchen model was the best model with the tuning parameters being a penalty() of 0.0031622777, and a mixture of 1. This created a mean measure of 0.80, roughly 0.30 higher than the baseline. The standard deviation was 0.0019, which is also really low. All of the kitchen sink models performed better than all of the alternative models. However, all of the models performed better than the null model. Moreover, the elastic net alternative model was the best of the alternative models as well, with a penalty of 0.0000000001 and a mixture of 1. Further tuning could be explored to see why there is such a great variance between the penalties for this model. If you look closely at the graph you see that the kitchen sink model for the multinomial model is missing. That is because it wouldn't run.
+
+The multinomial model for my kitchen sink model wasn't able to be fitted, and had errors when it was being folded. The most likely reason for this is the amount of binary variables that I have. When you mash up a lot of classifications to make a prediction, you get a lot of bins, and there aren't enough observations in those bins to fit all of the data. In the kitchen sink, I am trying to many classifications in which the multinomial model is having a sparcity problem. The multinomial model is a mechanistic model which is really dependent on model assumptions, and the model assumptions put a lot of weight on the data in each of these categories. All the other models are data-driven. Once they run out of one category, it just stops. That means that data driven models are more flexible and capable of handling data that is large. In a mechanistic model there are parameters that are estimated that uniquely identify that function, but it requires that you have enough data to estimate all of those functions. In the other models, because it is data driven, you don't need to estimate any parameters. The data tells you where to cut the data. That is why I didn't even need to set the parameters or have a grid. The multinomial model is an inflexible or parametric model, and if we don't have enough data in each of the areas we have an issue of sparcity. 
+
+The best parameters for the other bt_kitchen was a mtry() of 15, min_n() of 21, and a learn_rate() of 0.316, however the best parameters for the bt_alternative had all the same values except the min_n() was 30. The random forest models had vastly different best performing parameters. The kitchen rf had its mtry() as 8, and its min_n() as 21, while the alternative rf has a mtry() of 1 and a min_n() of 40. Both the knn models though had its K value (neighbors) as 15.
+
+Looking at this graph, it seems as if it is better to include all of the variables to get a better prediction of the job titles, although it does seem as if the few variables I selected for the alternative recipe did decently better against the baseline. The knn models did do the worst performance in each of their corresponding recipes. 
+
+The winning model therefore is the kitchen sink model because, it had the best overall mean within the roc_auc metric, although there wasnt a significant difference between it's performance compared to the bt_kitchen and the rf_kitchen. It makes sense that this would be the best model, as the elastic net model allows for such specific penalties and mixtures to be derived. This allows the elastic net to really be optimized to its best potential. Furthermore, more variables usually make a better prediction in a classification problem.
+
+# Final Model Analysis
+Based on the analysis that was conducted of all the models, the elastic net kitchen model was fit to the entire training set, then used on the testing set to make predictions. The performance of this model was evaluated in roc_auc, although its performance in terms of accuracy is also shown below.
+```{r}
+print(en_accuracy)
+print(baseline_accuracy)
+```
+This shows that the elastic net model has a rather low accuracy value, however it is still twice as accurate as the baseline accuracy value. 
+
+```{r}
+en_conf_matrix +
+  theme(axis.text.x = element_text(angle = 10)) +
+  labs(title = "Confusion Maxtrix of Predictions and the True Value")
+```
+This confusion matrix can be used to see how well the model was at predicting each of the job titles with the other jobs in the data set. To find the amount of correct predictions, you would have to see where the same job title intersect. 
+
+For predicting business analyst, it seems as most of them were mistaken for data analyst. That isn't surprising as both of them are analyst, and may use the same software as one another to make visualizations and see trends in data. A business analyst could also have tasks that align with a product/project manager as they probably work hand in hand to fix, and implement changes in the company. 
+
+For data analyst, the highest prediction was for the actual job title. The highest false positive for that one was for the title data scientist. This is understandable as it is known that the job title data scientist and data analyst are often used interchangeably as stated in the introduction. It makes sense that it would have a high false positive count as the roles can be rather similar to one another, or fitting the other job title more, in many companies.  
+
+Data Engineer on the other hand was very difficult to predict, with its true positive having one of the lowest compared to all the other job titles. They mostly thought they were data analyst, data scientist, or software engineers. 
+
+The job title data scientist was the best predicted job title in the confusion matrix. There could be some reasons for this. One, the data set and the website that it came from is mostly used for data scientist/those that work with datasets. Therefore, not only did it have the highest number of responses to the survey (allowing it to have a better idea of how to predict it), but most of the questions have to deal with machine learning, and other things data science. It makes sense that those that had the highest number of responses would be better predicted, and it is also why I didn't want to add any groups together during my data cleaning to minimize the impact it could have on the predictions. 
+
+Machine Learning Engineers also had a decent amount of true positives but nonetheless, most of them were mistaken for data scientist. Lots of what a data scientist does revolves around model building which is also tied to machine learning. The models learn from the data and adapt. It is understandable therefore that they mistake more of them for data scientist, and a handful for software engineers. 
+
+Product Managers weren't the best predicted with the model. More of them were mistaken for data analyst, data engineers, and software engineers. The last few especially were surprising because I would think that product managers would deal with more of the front end of production. A product manager is a person who identifies the customer need and the larger business objectives that a product or feature will fulfill. When researching more about what a product manager does, it becomes more understandable why lots of them were mistaken for data and software engineers. To be able to identify the weaknesses and deficiencies in a product/feature, you may need to work with engineers to create surveys or spreadsheets that identify those weaknesses. 
+
+Shockingly, research scientists also had a higher amount of true positives than any falses or true negatives. This may be because the tasks for a research scientist may be more distinct compared to the other job titles on the list. A good portion of them were mistaken for data scientist but that could be because of reasons mentioned before. 
+
+Software engineers was the second highest positively predicted job title. Although a decent amount of them were mistaken for data scientists, it had one of the lowest wrong predictions in the confusion matrix. 
+
+```{r}
+roc_curve_seperate +
+  labs(title = "Roc Curve for each of the Job Titles Seperately")
+
+roc_curve_together +
+  labs(title = "Roc Curve for each of the Job Titles Together")
+```
+Using an roc_auc you can see how each of these job titles relate to one another and which ones were the best predicted. The best predictions seem to be for research scientists, with software engineers being a close second. There seems to be a distance between the area under the curve for those two job titles, and the other ones listed. The others are roughly clustered together although data engineer had a noticeably lower area under the curve than the others. Although data scientist had the third highest area under the curve, it didn't do as well as the top 2. I think this is because data scientist had so many responses in the data set, so although it had one of the highest prediction that was correct, it also had a lot of wrong predictions made in which the model thought they were a data scientist when in reality they weren't. Going back to the distribution of the job titles in the beginning of the report, you see that data engineers had the lowest amount of responses. That could explain why it was the worst predicted job title.
+
+# Conclusion
+In conclusion, the elastic net model with the kitchen sink recipe was the best model out of all the other ones tested. It was fitted to the testing set and was able to have better predictions and be more accurate than the baseline (null) model. Although the alternative recipe did also perform better than the null recipe, none of the models with that recipe outperformed the kitchen sink recipe. This may be because more variables produce a better prediction in most classification problems. That also means that the variables in the alternative recipe were still meaningful in the predictions. 
+
+Thinking about ways to improve the prediction further, more experimentation can be done with the recipes like putting a step_interact() and looking at how certain variables play into the prediction. Furthermore, perhaps eradicating data science as a job title to predict, can show further insight into if it makes it better at predicting the other job titles. Because the area under the curve for these variables still wasn't full at 1 for any of the jobs, this could mean that some variables did lower the models ability to predict job titles. If anything, perhaps even trying a recipe in which you remove the alternative recipe variables could be interesting as well. 
+
+# References
+
+[kaggle-survey-2020](https://www.kaggle.com/competitions/kaggle-survey-2020/overview)
+
+[Tidy Modeling in R](https://www.tmwr.org/recipes.html)
+
+[Product Manager](https://www.atlassian.com/agile/product-management/product-manager)
+
+[Roc_Curve](https://towardsdatascience.com/understanding-auc-roc-curve-68b2303cc9c5?gi=a8b04d5ab965)
+
+[Multi_Nom](https://machinelearningmastery.com/multinomial-logistic-regression-with-python/)
+
+[Elastic](https://www.geeksforgeeks.org/elastic-net-regression-in-r-programming/)
+
+Data Science in R (301-2) Lecture Slides

@@ -1,0 +1,60 @@
+---
+title: "Predicting STEM Job Titles "
+subtitle: "Data Science 2 with R (STAT 301-2)"
+author: "Yaelle DC Pierre"
+date: "March 14 2023"
+
+format:
+  html:
+    toc: true
+    embed-resources: true
+    echo: false 
+    link-external-newwindow: true
+execute:
+  warning: false
+  message: false
+
+from: markdown+emoji  
+editor: 
+  markdown: 
+    wrap: 72
+---
+# Introduction
+Technology is one of the leading niches in todays' civilization in a multitude of aspects. It has advanced our way in life to a level that would've been unimaginable a century ago. Within the tech field, is an array of different job titles, and different tasks managed by each. Sometimes it pay be difficult to really understand what the differences between each of them are, or if there really is a difference. Sometimes many role titles are used interchangeably as well, such as data scientist and data analyst. This project was created to see if you could predict the job title of the person based off the answers they chose in a survey. This would provide further insight into the intersectionality and disparities between different jobs within the tech field.
+
+# Data Overview
+The original dataset contains 20037 survey responses done by Kaggle as part of their 2020 annual Data Science Survey Competition . There were 355 variables in this dataset which consist of questions that they asked within the survey. This dataset includes information about the primary coding language they use, their degree, years of experience they have coding, and etc. The survey only consisted of 37 questions initially, but most questions had multiple parts in it, and each column was only one of the choices they could've selected. In a sense, there were multiple "yes/no" style questions, which I ended up dummy coding to 0 or 1 to help with missingness and to clean the data. I went through all the questions and also took out some of the questions that I felt weren't necessary or may hinder my prediction. This was because 355 variables may be too many variables to make a good prediction with, and many of the questions I took out were asking the users what they want to be doing in 2 years.
+
+# Methods and Metric
+This prediction problem falls under the classification category as I am predicting job titles. The models I will be using will be as followed- K nearest neighbors (KNN), Boosted Tree (BT), Random Forest (RF), Elastic Net (EN), and a Multinomial Regression (MN). 
+
+The recipes I will be focusing on is the null recipe, kitchen sink recipe, and an alternative recipe I want to explore after doing data exploration. The null recipe doesn't actually have a recipe in it. It is used to get a baseline, and therefore although you need to add a recipe to the workflow, it doesn't actually use it. A null model doesn't have any main arguments and can be used to see what the baseline of what the mean would be, which is 0.50. A Kitchen sink model uses all of the variables in the dataset to predict a response. The alternative recipe has all of the same steps as the kitchen sink model, however it has a specific set of predictors being used. When doing data exploration into a few of the variables, I wanted to see if I could take some of the variables that didn't have any binary coding and use them to predict the outcome variable. This ended up consisting of q25, q24, q22, q15, q13, and q8. Not all the non-binary variables were chosen.
+
+The metric that I will be using for my prediction problem is roc_auc. ROC is a probability curve and auc represents the degree of separability. The reason I am using this metric is because its the most commonly used metric for classification problems. The area under the curve means how good it is as a predictor, therefore the more area under the curve, the better. Sensitivity and Specificity are inversely proportional to each other on these graphs. Because my model is multi-class, it will plot the number of roc_auc curves for each class using the one vs all methodology. Therefore it would compare that one classification to all the other methodologies in terms of prediction. Although I did look at the accuracy of my final model just for reference, the metric I focus on to get my final model will be roc_auc. 
+
+# Conclusion
+
+The multinomial model for my kitchen sink model wasn't able to be fitted, and had errors when it was being folded. The most likely reason for this is the amount of binary variables that I have. When you mash up a lot of classifications to make a prediction, you get a lot of bins, and there aren't enough observations in those bins to fit all of the data. In the kitchen sink, I am trying to many classifications in which the multinomial model is having a sparcity problem.
+
+```{r}
+library(tidyverse)
+library(readr)
+library(skimr)
+library(stringr)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+
+load(file = "graphics/graphs.rda")
+
+roc_curve_seperate +
+  labs(title = "Roc Curve for each of the Job Titles Seperately")
+
+roc_curve_together +
+  labs(title = "Roc Curve for each of the Job Titles Together")
+```
+
+Using an roc_auc you can see how each of these job titles relate to one another and which ones were the best predicted. The best predictions seem to be for research scientists, with software engineers being a close second. There seems to be a distance between the area under the curve for those two job titles, and the other ones listed. The others are roughly clustered together although data engineer had a noticeably lower area under the curve than the others. Although data scientist had the third highest area under the curve, it didn't do as well as the top 2. I think this is because data scientist had so many responses in the data set, so although it had one of the highest prediction that was correct, it also had a lot of wrong predictions made in which the model thought they were a data scientist when in reality they weren't. Going back to the distribution of the job titles in the beginning of the report, you see that data engineers had the lowest amount of responses. That could explain why it was the worst predicted job title.
+
+In conclusion, the elastic net model with the kitchen sink recipe was the best model out of all the other ones tested. It was fitted to the testing set and was able to have better predictions and be more accurate than the baseline (null) model. Although the alternative recipe did also perform better than the null recipe, none of the models with that recipe outperformed the kitchen sink recipe. This may be because more variables produce a better prediction in most classification problems. That also means that the variables in the alternative recipe were still meaningful in the predictions. 
+

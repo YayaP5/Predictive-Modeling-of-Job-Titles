@@ -1,0 +1,47 @@
+---
+title: "Final Project Data Memo"
+subtitle: "Data Science 2 with R (STAT 301-2)"
+author: "Yaelle Pierre"
+
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: show
+    link-external-newwindow: true
+    
+execute:
+  warning: false
+  message: false
+  
+from: markdown+emoji 
+---
+
+## Data Memo
+
+The goal of this file is to state and describe the dataset of my choosing for the final project in the first quarter of the data science sequence in R.
+
+## Data Source
+
+### Data citation 
+The data we will be using is the 'kaggle_survey_2020_responses.csv' that was obtained from the dataset finder kaggle.com. The link to the data can be found below. You may have to sign in to view the dataset. 
+
+### Link to dataset
+[kaggle-survey-2020](https://www.kaggle.com/competitions/kaggle-survey-2020/overview)
+
+## Why this Data
+
+This dataset contains 20037 survey responses done by kaggle as part of their 2020 annual Data Science Survey Competiton . There are 355 variables in this data set which consist of questions that they asked within the survey. The reason I choose this data is because I am interested in data science. It is my major, and my primary contender for what I want to do as a career. This data set includes information about the primary coding language they use, their degree, years of experience they have coding, and etc. I am interested in seeing the links, and predictions I can make in terms of the best coding languages to use in different data science roles, and if a university degree is necessary for lots of their roles. 
+
+## Potential Data Issues
+
+Many of the variables in this dataset are strings/characters. This could be difficult because some cleaning may be in order to make sure that all of the observations are entered the same way when discussing or expressing the same answer. The fact that it has so may variables also makes it difficult because its hard to see all the variables, and I may have to go through each question to see which ones I want to use, and then create a more condensed amount of variables after. There are some optional variables (questions) as well, which can make it difficult to get a concise measure of all the responses. Many of the questions are also an "other" variable which most people left empty, so I could start by taking those out after researching the data further.
+
+## Proposed project timeline
+
+I would like to finish going through all the variables by the end of January. By then I also hope to have a better picture of what I want my response variable to be. Then I would take till the middle of Februrary to clean and transform the data. By then I hope to start using models to start properly applying the various stpes of the statistical learning pipeline to form a prediction. I want to get a lot of the major work done in February, as I will have another project for data vis to work on as well. I already have my dataset loaded into R, but I may decide to use other datasets in conjunction to this one as well, depending on where my project goes, but I will hopefully know that by the end of the month. 
+
+## Prediction problem/question of interest
+
+I am not fully certain of what the response variable will be as of right now, but I am expecting this to be a classification prediction problem.
+My Prediction problem would be to predict what programming language they use most often based off factors I am not certain of yet.
